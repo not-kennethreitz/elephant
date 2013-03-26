@@ -8,12 +8,17 @@ from uuid import uuid4
 
 import boto
 from flask import Flask, request
+from flask.ext.script import Manager
+from clint.textui import progress
 # from boto.s3.connection import S3Connection
 # from boto.exception import S3ResponseError
 from pyelasticsearch import ElasticSearch
 
 
 app = Flask(__name__)
+manager = Manager(app)
+
+# Configuration
 app.debug = 'DEBUG' in os.environ
 
 # The Elastic Search endpoint to use.
@@ -124,6 +129,14 @@ class Record(object):
     def collection(self):
         return Collection(name=self.collection_name)
 
+@manager.command
+def seed_index():
+    print 'Indexing:'
+    # for key in progress.bar([i for i in iter_metadata()]):
+        # r = Record.from_uuid(key.name[:-5])
+        # r.index_task.delay(r)
+
+
 @app.before_request
 def require_apikey():
 
@@ -138,4 +151,4 @@ def hello_world():
     return 'Hello World!'
 
 if __name__ == '__main__':
-    app.run()
+    manager.run()
