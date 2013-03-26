@@ -151,7 +151,6 @@ class Record(object):
         else:
             collection = uuid.split('/')[0]
 
-        print uuid
         key = BUCKET.get_key(uuid)
         j = json.loads(key.read())['record']
 
