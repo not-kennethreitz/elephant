@@ -101,6 +101,12 @@ class Record(object):
         return "<Record:{0}:{1} {2}>".format(
                 self.collection_name, self.uuid, repr(self.data))
 
+    def __getitem__(self, *args, **kwargs):
+        return self.data.__getitem__(*args, **kwargs)
+
+    def __setitem__(self, *args, **kwargs):
+        return self.data.__setitem__(*args, **kwargs)
+
     def save(self):
         self._persist()
         self._index()
