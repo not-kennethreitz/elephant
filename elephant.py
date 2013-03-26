@@ -91,16 +91,16 @@ class Record(object):
         self.collection = None
 
     def save(self):
-        self.persist()
-        self.index()
+        self._persist()
+        self._index()
 
-    def persist(self):
+    def _persist(self):
         """Saves the Record to S3."""
         key = BUCKET.new_key('{0}/{1}.json'.format(self.collection, self.uuid))
         key.update_metadata({'Content-Type': 'application/json'})
         key.set_contents_from_string(self.json)
 
-    def index(self):
+    def _index(self):
         """Saves the Record to Elastic Search."""
         return ES.index(self.collection, 'record', self.dict, id=self.uuid)
 
