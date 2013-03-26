@@ -3,7 +3,7 @@
 import os
 import json
 import time
-import datetime
+from datetime import datetime
 from uuid import uuid4
 
 import boto
@@ -47,6 +47,9 @@ class Collection(object):
 
     def __init__(self, name):
         self.name = name
+
+    def __getitem__(self, k):
+        return Record._from_uuid(k, collection=self.name)
 
     def iter_search(self, query, **kwargs):
         """Returns an iterator of Records for the given query."""
@@ -113,7 +116,7 @@ class Record(object):
 
     def _persist(self):
         """Saves the Record to S3."""
-        key = BUCKET.new_key('{0}/{1}.json'.format(self.collection_name, self.uuid))
+        key = BUCKET.new_key('{0}/{1}'.format(self.collection_name, self.uuid))
         key.update_metadata({'Content-Type': 'application/json'})
         key.set_contents_from_string(self.json)
 
@@ -136,13 +139,16 @@ class Record(object):
         return Collection(name=self.collection_name)
 
     @classmethod
-    def _from_uuid(cls, uuid):
+    def _from_uuid(cls, uuid, collection=None):
+        if collection:
+            uuid = '{}/{}'.format(collection, uuid)
+
         key = BUCKET.get_key(uuid)
         j = json.loads(key.read())['record']
 
         r = cls()
         r.uuid = j.pop('uuid', None)
-        r.uuid = j.pop('epoch', None)
+        r.epoch = j.pop('epoch', None)
         r.data = j
 
         return r
