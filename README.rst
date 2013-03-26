@@ -7,6 +7,22 @@ Search and query functionality is all provided by a backing Elastic Seach server
 
 Simplicity — full-text search, HTTP, persitience, data portability.
 
+Usage
+-----
+
+Usage is simple and elegant::
+
+    import requests
+
+    >>> doc = {'title': 'Test Post', 'draft': True}
+    >>> requests.post('http://elephant-server/pages/', data=doc)
+    <Response [200]>
+    
+    >>> r = requests.get('http://elephant-server/pages/', params={'q': 'draft:True'})
+    >>> r.json()
+    {u'records': [{u'epoch': 1364286524987, u'title': u'Test Post', u'uuid': u'ce251e8a-ab6b-4f7e-bdc4-eecf0e71ac16'}}
+
+
 Configuration
 -------------
 
