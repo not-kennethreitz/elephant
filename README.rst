@@ -54,7 +54,7 @@ Reseeding ElasticSearch is super simple::
     Indexing...
     [####                            ] 29/378
 
-Inpsiration
+Inspiration
 -----------
 
 Extracted out of the in-progress `blackbox <https://github.com/kennethreitz/blackbox>`_ project.
