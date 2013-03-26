@@ -3,10 +3,12 @@
 import os
 import json
 import time
+import urlparse
 from datetime import datetime
 from uuid import uuid4
 
 import boto
+import requests
 from flask import Flask, request, Response
 from flask.ext.script import Manager
 from clint.textui import progress
@@ -30,8 +32,11 @@ API_KEY = os.environ['API_KEY']
 BUCKET_NAME = 'elephant-{}'.format(CLUSTER_NAME)
 BUCKET = boto.connect_s3().create_bucket(BUCKET_NAME)
 
-
+# Elastic Search Stuff.
 ES = ElasticSearch(ELASTICSEARCH_URL)
+_url = urlparse.urlparse(ES.servers.live[0])
+ES_AUTH = (_url.username, _url.password)
+
 
 def epoch(dt=None):
     """Returns the epoch value for the given datetime, defulting to now."""
@@ -70,15 +75,13 @@ class Collection(object):
             ]
         }
 
-        # if query:
         q['query'] = {'term': {'query': query}},
 
-        results = ES.search(q, index=self.slug, **params)
-        # print results
+        results = ES.search(q, index=self.name, **params)
 
         params['es_q'] = query
         for hit in results['hits']['hits']:
-            yield Record.from_hit(hit)
+            yield Record._from_uuid(hit['_id'], collection=self.name)
 
     def search(self, query, sort=None, size=None, **kwargs):
         """Returns a list of Records for the given query."""
@@ -89,6 +92,9 @@ class Collection(object):
             kwargs['size'] = size
 
         return [r for r in self.iter_search(query, **kwargs)]
+
+    def save(self):
+        return requests.post('{}/{}'.format(ELASTICSEARCH_URL, self.name), auth=ES_AUTH)
 
 
 class Record(object):
@@ -143,6 +149,7 @@ class Record(object):
         if collection:
             uuid = '{}/{}'.format(collection, uuid)
 
+        print uuid
         key = BUCKET.get_key(uuid)
         j = json.loads(key.read())['record']
 
@@ -158,7 +165,7 @@ def seed():
     """Seeds the index from the configured S3 Bucket."""
     print 'Indexing:'
     for key in progress.bar([k for k in BUCKET.list()]):
-         r = Record.from_uuid(key.name)
+         r = Record._from_uuid(key.name)
          r._index()
 
 @app.before_request
