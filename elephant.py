@@ -9,12 +9,13 @@ from uuid import uuid4
 
 import boto
 import requests
-from flask import Flask, request, Response
+from flask import Flask, request, Response, jsonify, redirect
 from flask.ext.script import Manager
 from clint.textui import progress
 # from boto.s3.connection import S3Connection
 # from boto.exception import S3ResponseError
 from pyelasticsearch import ElasticSearch
+from pyelasticsearch.exceptions import IndexAlreadyExistsError
 
 
 app = Flask(__name__)
@@ -94,7 +95,17 @@ class Collection(object):
         return [r for r in self.iter_search(query, **kwargs)]
 
     def save(self):
-        return requests.post('{}/{}'.format(ELASTICSEARCH_URL, self.name), auth=ES_AUTH)
+        # return requests.post('{}/{}'.format(ELASTICSEARCH_URL, self.name), auth=ES_AUTH)
+        try:
+            return ES.create_index(self.name)
+        except IndexAlreadyExistsError:
+            pass
+
+    def new_record(self):
+        r = Record()
+        r.collection_name = self.name
+        return r
+
 
 
 class Record(object):
@@ -117,8 +128,14 @@ class Record(object):
         return self.data.__setitem__(*args, **kwargs)
 
     def save(self):
+        self.epoch = epoch()
+
         self._persist()
         self._index()
+
+    def delete(self):
+        ES.delete(index=self.collection.name, doc_type='record', id=self.uuid)
+        BUCKET.delete_key('{}/{}'.format(self.collection.name, self.uuid))
 
     def _persist(self):
         """Saves the Record to S3."""
@@ -166,7 +183,6 @@ class Record(object):
 def seed():
     """Seeds the index from the configured S3 Bucket."""
 
-
     print 'Calculating Indexes...'
     indexes = set()
     for k in progress.bar([k for k in BUCKET.list()]):
@@ -209,50 +225,62 @@ def login_challenge():
     'You have to login with proper credentials', 401,
     {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
-@app.route('/')
-def get_collections():
-    """A list of collections."""
-    pass
 
-@app.route('/', methods=['POST', 'PUT'])
-def post_collections():
-    """Add a new collection."""
-    pass
-
-@app.route('/<collection>')
+@app.route('/<collection>/')
 def get_collection(collection):
     """Get a list of records from a given collection."""
+
+    if collection == 'favicon.ico':
+        return '.'
+
     c = Collection(collection)
 
     args = request.args.to_dict()
     results = c.search(request.args.get('q'), **args)
 
+    return jsonify(records=[r.dict for r in results])
 
-    return repr(results)
-
-@app.route('/', methods=['POST', 'PUT'])
-def post_collection():
+@app.route('/<collection>/', methods=['POST', 'PUT'])
+def post_collection(collection):
     """Add a new record to a given collection."""
-    pass
+    c = Collection(collection)
+    c.save()
 
-def get_record():
+    record = c.new_record()
+    record.data = request.json or request.form.to_dict()
+    record.save()
+
+    return get_record(collection, record.uuid)
+
+@app.route('/<collection>/<uuid>')
+def get_record(collection, uuid):
     """Get a record from a given colection."""
-    pass
+    return jsonify(record=Collection(collection)[uuid].dict)
 
-@app.route('/', methods=['POST'])
-def post_record():
+@app.route('/<collection>/<uuid>', methods=['POST'])
+def post_record(collection, uuid):
     """Replaces a given Record."""
-    pass
+    record = Collection(collection)[uuid]
+    record.data = request.json or request.form.to_dict()
+    record.save()
 
-@app.route('/', methods=['PUT'])
-def put_record():
+    return get_record(collection, uuid)
+
+@app.route('/<collection>/<uuid>', methods=['PUT'])
+def put_record(collection, uuid):
     """Updates a given Record."""
-    pass
 
-@app.route('/', methods=['DELETE'])
-def delete_record():
+    record = Collection(collection)[uuid]
+    record.data.update(request.json or request.form.to_dict())
+    record.save()
+
+    return get_record(collection, uuid)
+
+@app.route('/<collection>/<uuid>', methods=['DELETE'])
+def delete_record(collection, uuid):
     """Deletes a given record."""
-    pass
+    Collection(collection)[uuid].delete()
+    return redirect('/{}/'.format(collection))
 
 if __name__ == '__main__':
     manager.run()
