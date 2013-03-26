@@ -12,8 +12,6 @@ import requests
 from flask import Flask, request, Response, jsonify, redirect
 from flask.ext.script import Manager
 from clint.textui import progress
-# from boto.s3.connection import S3Connection
-# from boto.exception import S3ResponseError
 from pyelasticsearch import ElasticSearch
 from pyelasticsearch.exceptions import IndexAlreadyExistsError
 
