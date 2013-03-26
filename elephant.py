@@ -131,6 +131,7 @@ class Record(object):
 
 @manager.command
 def seed_index():
+    """Seeds the index from the configured S3 Bucket."""
     print 'Indexing:'
     # for key in progress.bar([i for i in iter_metadata()]):
         # r = Record.from_uuid(key.name[:-5])
