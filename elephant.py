@@ -90,6 +90,9 @@ class Record(object):
         self.epoch = epoch()
         self.collection = None
 
+    def __repr__(self):
+        return "<Record:{0} {1}>".format(self.uuid, repr(self.data))
+
     def save(self):
         self._persist()
         self._index()
