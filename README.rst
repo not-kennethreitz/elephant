@@ -10,7 +10,8 @@ Simplicity — full-text search, HTTP, persitience, data portability.
 Usage
 -----
 
-    .. code-block:: pycon
+.. code-block:: pycon
+
     >>> import requests
 
     >>> doc = {'title': 'Test Post', 'draft': True}
