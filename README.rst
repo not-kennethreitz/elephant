@@ -7,8 +7,6 @@ Search and query functionality is all provided by a backing Elastic Seach server
 
 Simplicity — full-text search, HTTP, persitience, data portability.
 
-Enjoy.
-
 Configuration
 -------------
 
