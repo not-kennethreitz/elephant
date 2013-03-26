@@ -3,7 +3,7 @@
 import os
 from uuid import uuid4
 
-from flask import Flask
+from flask import Flask, request
 from pyelasticsearch import ElasticSearch
 
 
@@ -14,6 +14,11 @@ ELASTICSEARCH_URL = os.environ['ELASTICSEARCH_URL']
 CLUSTER_NAME = os.environ['CLUSTER_NAME']
 API_KEY = os.environ['API_KEY']
 
+@app.before_request
+def require_apikey():
+    assert request.params.get('key') == API_KEY
+
+    return '-_-', 403
 
 @app.route('/')
 def hello_world():
