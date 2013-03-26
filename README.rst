@@ -23,6 +23,8 @@ Elephant expects the following environment variables to be set::
     # Instance Password
     API_KEY = xxxxxx
 
+If you need an Elastic Search to test against, checkout `heroku-elasticsearch <https://github.com/kennethreitz/heroku-elasticsearch>`_.
+
 
 Managing
 --------
