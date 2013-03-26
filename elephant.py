@@ -199,7 +199,13 @@ def post_collections():
 @app.route('/<collection>')
 def get_collection(collection):
     """Get a list of records from a given collection."""
-    pass
+    c = Collection(collection)
+
+    args = request.args.to_dict()
+    results = c.search(request.args.get('q'), **args)
+
+
+    return repr(results)
 
 @app.route('/', methods=['POST', 'PUT'])
 def post_collection():
