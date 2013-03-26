@@ -126,7 +126,11 @@ class Record(object):
 
 @app.before_request
 def require_apikey():
-    if request.args.get('key') != API_KEY:
+
+    valid_key_param = request.args.get('key') == API_KEY
+    valid_key_header = request.headers.get('X-Key') == API_KEY
+
+    if not (valid_key_param or valid_key_header):
         return '>_<', 403
 
 @app.route('/')
