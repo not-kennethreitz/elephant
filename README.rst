@@ -12,14 +12,10 @@ Usage
 
 .. code-block:: pycon
 
-    >>> import requests
-
-    >>> doc = {'title': 'Test Post', 'draft': True}
-    >>> requests.post('http://elephant-server/pages/', data=doc)
+    >>> requests.post('http://elephant-server/pages/', data={'title': 'Test Page', 'draft': True})
     <Response [200]>
     
-    >>> r = requests.get('http://elephant-server/pages/', params={'q': 'draft:True'})
-    >>> r.json()
+    >>> requests.get('http://elephant-server/pages/', params={'q': 'draft:True'}).json()
     {u'records': [{u'epoch': 1364286524987, u'title': u'Test Post', u'uuid': u'ce251e8a-ab6b-4f7e-bdc4-eecf0e71ac16'}}
 
 
