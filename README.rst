@@ -10,10 +10,17 @@ Configuration
 
 Elephant expects the following environment variables to be set::
 
+    # AWS Credentials
     AWS_ACCESS_KEY_ID = xxxxxx
     AWS_SECRET_ACCESS_KEY = xxxxxx
+ 
+    # Elastic Search Server
     ELASTICSEARCH_URL = xxxxxx
+    
+    # Instance Name
     CLUSTER_NAME = xxxxxx
+    
+    # Instance Password
     API_KEY = xxxxxx
 
 
