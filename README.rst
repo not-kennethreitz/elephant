@@ -1,4 +1,17 @@
 Elephant
 ========
 
-Extracted out of the in-progress `blackbox <https://github.com/kennethreitz/blackbox>` _ project.
+A persistent, full-text searchable key-value store. Powered by Flask, ElasticSearch, and good intensions.
+
+Extracted out of the in-progress `blackbox <https://github.com/kennethreitz/blackbox>`_ project.
+
+Configuration
+-------------
+
+Elephant expects the following environment variables to be set::
+
+    AWS_ACCESS_KEY_ID = xxxxxx
+    AWS_SECRET_ACCESS_KEY = xxxxxx
+    ELASTICSEARCH_URL = xxxxxx
+    CLUSTER_NAME = xxxxxx
+    SECRET_KEY = xxxxxx
