@@ -14,6 +14,7 @@ from pyelasticsearch import ElasticSearch
 
 
 app = Flask(__name__)
+app.debug = 'DEBUG' in os.environ
 
 # The Elastic Search endpoint to use.
 ELASTICSEARCH_URL = os.environ['ELASTICSEARCH_URL']
@@ -125,8 +126,8 @@ class Record(object):
 
 @app.before_request
 def require_apikey():
-    assert request.params.get('key') == API_KEY
-    return '-_-', 403
+    if request.args.get('key') != API_KEY:
+        return '>_<', 403
 
 @app.route('/')
 def hello_world():
