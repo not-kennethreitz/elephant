@@ -7,7 +7,7 @@ import datetime
 from uuid import uuid4
 
 import boto
-from flask import Flask, request
+from flask import Flask, request, Response
 from flask.ext.script import Manager
 from clint.textui import progress
 # from boto.s3.connection import S3Connection
@@ -129,27 +129,82 @@ class Record(object):
     def collection(self):
         return Collection(name=self.collection_name)
 
+    @classmethod
+    def _from_uuid(cls, uuid):
+        key = BUCKET.get_key(uuid)
+        j = json.loads(key.read())['record']
+
+        r = cls()
+        r.uuid = j.pop('uuid', None)
+        r.uuid = j.pop('epoch', None)
+        r.data = j
+
+        return r
+
 @manager.command
-def seed_index():
+def seed():
     """Seeds the index from the configured S3 Bucket."""
     print 'Indexing:'
-    # for key in progress.bar([i for i in iter_metadata()]):
-        # r = Record.from_uuid(key.name[:-5])
-        # r.index_task.delay(r)
-
+    for key in progress.bar([k for k in BUCKET.list()]):
+         r = Record.from_uuid(key.name)
+         r._index()
 
 @app.before_request
 def require_apikey():
+    """Blocks aunauthorized requests."""
 
     valid_key_param = request.args.get('key') == API_KEY
     valid_key_header = request.headers.get('X-Key') == API_KEY
+    valid_basic_pass = request.auth.password == API_KEY
 
-    if not (valid_key_param or valid_key_header):
+    if not (valid_key_param or valid_key_header or valid_basic_pass):
         return '>_<', 403
 
+@app.route('/login')
+def login_challenge():
+    return Response(
+    'Could not verify your access level for that URL.\n'
+    'You have to login with proper credentials', 401,
+    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
 @app.route('/')
-def hello_world():
-    return 'Hello World!'
+def get_collections():
+    """A list of collections."""
+    pass
+
+@app.route('/', methods=['POST', 'PUT'])
+def post_collections():
+    """Add a new collection."""
+    pass
+
+@app.route('/<collection>')
+def get_collection(collection):
+    """Get a list of records from a given collection."""
+    pass
+
+@app.route('/', methods=['POST', 'PUT'])
+def post_collection():
+    """Add a new record to a given collection."""
+    pass
+
+def get_record():
+    """Get a record from a given colection."""
+    pass
+
+@app.route('/', methods=['POST'])
+def post_record():
+    """Replaces a given Record."""
+    pass
+
+@app.route('/', methods=['PUT'])
+def put_record():
+    """Updates a given Record."""
+    pass
+
+@app.route('/', methods=['DELETE'])
+def delete_record():
+    """Deletes a given record."""
+    pass
 
 if __name__ == '__main__':
     manager.run()
