@@ -148,12 +148,15 @@ class Record(object):
     def _from_uuid(cls, uuid, collection=None):
         if collection:
             uuid = '{}/{}'.format(collection, uuid)
+        else:
+            collection = uuid.split('/')[0]
 
         print uuid
         key = BUCKET.get_key(uuid)
         j = json.loads(key.read())['record']
 
         r = cls()
+        r.collection_name = collection
         r.uuid = j.pop('uuid', None)
         r.epoch = j.pop('epoch', None)
         r.data = j
@@ -163,14 +166,35 @@ class Record(object):
 @manager.command
 def seed():
     """Seeds the index from the configured S3 Bucket."""
-    print 'Indexing:'
+
+
+    print 'Calculating Indexes...'
+    indexes = set()
+    for k in progress.bar([k for k in BUCKET.list()]):
+        indexes.add(k.name.split('/')[0])
+
+    print 'Creating Indexes...'
+    for index in indexes:
+        c = Collection(index)
+        c.save()
+
+    print 'Indexing...'
     for key in progress.bar([k for k in BUCKET.list()]):
          r = Record._from_uuid(key.name)
          r._index()
 
+@manager.command
+def purge():
+    """Seeds the index from the configured S3 Bucket."""
+    print 'Deleting all indexes...'
+    ES.delete_all_indexes()
+
 @app.before_request
 def require_apikey():
     """Blocks aunauthorized requests."""
+
+    if app.debug:
+        return
 
     valid_key_param = request.args.get('key') == API_KEY
     valid_key_header = request.headers.get('X-Key') == API_KEY
