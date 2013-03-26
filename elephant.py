@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import json
 import time
 import datetime
 from uuid import uuid4
@@ -38,8 +39,8 @@ def epoch(dt=None):
 class Collection(object):
     """A set of Records."""
 
-    def __init__(self):
-        self.slug = None
+    def __init__(self, name):
+        self.name = name
 
     def iter_search(self, query, **kwargs):
         """Returns an iterator of Records for the given query."""
@@ -88,10 +89,11 @@ class Record(object):
         self.uuid = str(uuid4())
         self.data = {}
         self.epoch = epoch()
-        self.collection = None
+        self.collection_name = None
 
     def __repr__(self):
-        return "<Record:{0} {1}>".format(self.uuid, repr(self.data))
+        return "<Record:{0}:{1} {2}>".format(
+                self.collection_name, self.uuid, repr(self.data))
 
     def save(self):
         self._persist()
@@ -99,13 +101,13 @@ class Record(object):
 
     def _persist(self):
         """Saves the Record to S3."""
-        key = BUCKET.new_key('{0}/{1}.json'.format(self.collection, self.uuid))
+        key = BUCKET.new_key('{0}/{1}.json'.format(self.collection_name, self.uuid))
         key.update_metadata({'Content-Type': 'application/json'})
         key.set_contents_from_string(self.json)
 
     def _index(self):
         """Saves the Record to Elastic Search."""
-        return ES.index(self.collection, 'record', self.dict, id=self.uuid)
+        return ES.index(self.collection.name, 'record', self.dict, id=self.uuid)
 
     @property
     def dict(self):
@@ -113,11 +115,17 @@ class Record(object):
         d.update(uuid=self.uuid, epoch=self.epoch)
         return d
 
+    @property
+    def json(self):
+        return json.dumps({'record': self.dict})
+
+    @property
+    def collection(self):
+        return Collection(name=self.collection_name)
 
 @app.before_request
 def require_apikey():
     assert request.params.get('key') == API_KEY
-
     return '-_-', 403
 
 @app.route('/')
