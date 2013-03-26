@@ -15,3 +15,12 @@ Elephant expects the following environment variables to be set::
     ELASTICSEARCH_URL = xxxxxx
     CLUSTER_NAME = xxxxxx
     SECRET_KEY = xxxxxx
+
+
+Managing
+--------
+
+Seeding the index from S3:
+
+    $ python manage.py seed_index
+    Reseeding the index...
