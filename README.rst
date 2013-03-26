@@ -3,7 +3,7 @@ Elephant
 
 Basically, this is a HTTP key/value store with full-text search and fast queries. Still a work in progress.
 
-Search and query functionality is all provided by a backing Elastic Seach server. Everything is immediately replicated to S3 as JSON documents.
+Search and query functionality is all provided by a backing Elastic Search server. Everything is immediately replicated to S3 as JSON documents.
 
 Simplicity — full-text search, HTTP, persitience, data portability.
 
