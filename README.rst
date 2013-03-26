@@ -39,6 +39,21 @@ Elephant expects the following environment variables to be set::
 
 If you need an Elastic Search to test against, checkout `heroku-elasticsearch <https://github.com/kennethreitz/heroku-elasticsearch>`_.
 
+Management
+----------
+
+Reseeding ElasticSearch is super simple::
+
+    $ python elephant.py purge
+    Deleting all indexes...
+
+    $ python elephant.py seed
+    Calculating Indexes...
+    [################################] 3/3
+    Creating Indexes...
+    Indexing...
+    [################################] 3/3
+
 Inpsiration
 -----------
 
