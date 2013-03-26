@@ -14,7 +14,7 @@ Elephant expects the following environment variables to be set::
     AWS_SECRET_ACCESS_KEY = xxxxxx
     ELASTICSEARCH_URL = xxxxxx
     CLUSTER_NAME = xxxxxx
-    SECRET_KEY = xxxxxx
+    API_KEY = xxxxxx
 
 
 Managing
