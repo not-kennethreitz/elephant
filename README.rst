@@ -10,9 +10,10 @@ Simplicity — full-text search, HTTP, persitience, data portability.
 Usage
 -----
 
-Usage is simple and elegant::
+Usage is simple and elegant
 
-    import requests
+.. code-block:: pycon
+    >>> import requests
 
     >>> doc = {'title': 'Test Post', 'draft': True}
     >>> requests.post('http://elephant-server/pages/', data=doc)
