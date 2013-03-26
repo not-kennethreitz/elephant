@@ -49,10 +49,10 @@ Reseeding ElasticSearch is super simple::
 
     $ python elephant.py seed
     Calculating Indexes...
-    [################################] 3/3
+    [################################] 378/378
     Creating Indexes...
     Indexing...
-    [################################] 3/3
+    [####                            ] 29/378
 
 Inpsiration
 -----------
