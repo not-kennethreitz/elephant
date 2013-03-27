@@ -3,7 +3,7 @@ Elephant
 
 Elephant is an S3-backed key-value store with querying powered by Elastic Search. Your data is persisted on S3 as simple JSON documents, but you can instantly query it over HTTP.
 
-Suddenly, tour data becomes as durable as S3, as portable as JSON, as queryable as HTTP. Enjoy!
+Suddenly, your data becomes as durable as S3, as portable as JSON, as queryable as HTTP. Enjoy!
 
 Usage
 -----
