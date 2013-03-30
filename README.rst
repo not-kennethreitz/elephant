@@ -1,7 +1,7 @@
 Elephant
 ========
 
-Basically, this is an HTTP key/value store with full-text search and fast queries. 
+Basically, this is an HTTP key/value store with full-text search and fast queries.
 
 Search and query functionality is all provided by a backing Elastic Seach server. Everything is immediately replicated to S3 as JSON documents.
 
@@ -14,7 +14,7 @@ Usage
 
     >>> requests.post('http://elephant-server/pages/', data={'title': 'Test Page', 'draft': True})
     <Response [200]>
-    
+
     >>> requests.get('http://elephant-server/pages/', params={'q': 'draft:True'}).json()
     {u'records': [{u'epoch': 1364286524987, u'title': u'Test Post', u'uuid': u'ce251e8a-ab6b-4f7e-bdc4-eecf0e71ac16'}}
 
@@ -27,17 +27,32 @@ Elephant expects the following environment variables to be set::
     # AWS Credentials
     AWS_ACCESS_KEY_ID = xxxxxx
     AWS_SECRET_ACCESS_KEY = xxxxxx
- 
+
     # Elastic Search Server
     ELASTICSEARCH_URL = xxxxxx
-    
+
     # Instance Name
     CLUSTER_NAME = xxxxxx
-    
+
     # Instance Password
     API_KEY = xxxxxx
 
+Optional Configuration::
+
+    # Write to local files instead of S3
+    AIRPLANE_MODE = 1
+
+    # Allow the public to query the dataset without authentication.
+    PUBLIC_QUERIES=1
+
+    # Custom S3 Bucket Name
+    S3_BUCKET_NAME
+
+    # Custom DynamoDB Name
+    DYNAMODB_NAME
+
 If you need an Elastic Search to test against, checkout `heroku-elasticsearch <https://github.com/kennethreitz/heroku-elasticsearch>`_.
+
 
 Management
 ----------

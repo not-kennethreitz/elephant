@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import os
+import errno
 import json
 import time
 import urlparse
+from os import makedirs
 from datetime import datetime
 from uuid import uuid4
 
 import boto
-import requests
 from flask import Flask, request, Response, jsonify, redirect
 from flask.ext.script import Manager
 from clint.textui import progress
@@ -26,15 +27,78 @@ app.debug = 'DEBUG' in os.environ
 ELASTICSEARCH_URL = os.environ['ELASTICSEARCH_URL']
 CLUSTER_NAME = os.environ['CLUSTER_NAME']
 API_KEY = os.environ['API_KEY']
+AIRPLANE_MODE = 'AIRPLANE_MODE' in os.environ
 
 # If S3 bucket doesn't exist, set it up.
 BUCKET_NAME = 'elephant-{}'.format(CLUSTER_NAME)
-BUCKET = boto.connect_s3().create_bucket(BUCKET_NAME)
+
 
 # Elastic Search Stuff.
 ES = ElasticSearch(ELASTICSEARCH_URL)
 _url = urlparse.urlparse(ES.servers.live[0])
 ES_AUTH = (_url.username, _url.password)
+
+class TrunkStore(object):
+    """An abstracted S3 Bucket. Allows for airplane mode :)"""
+
+    def __init__(self, name, airplane_mode=False):
+        self.bucket_name = name
+        self.airplane_mode = airplane_mode
+
+        if self.airplane_mode:
+            mkdir_p('db')
+        else:
+            self._bucket = boto.connect_s3().create_bucket(self.bucket_name)
+
+    def delete(self, key):
+        if self.airplane_mode:
+            os.remove('db/{}'.format(key))
+            return
+
+        return self._bucket.delete_key(key)
+
+    def set(self, key, value):
+        if self.airplane_mode:
+            split = key.split('/')
+            if len(split) > 1:
+                mkdir_p('db/{}'.format(split[0]))
+
+            with open('db/{}'.format(key), 'w') as f:
+                f.write(value)
+                return
+
+        key = self._bucket.new_key(key)
+        key.update_metadata({'Content-Type': 'application/json'})
+        key.set_contents_from_string(value)
+
+        return True
+
+    def get(self, key):
+        if self.airplane_mode:
+            with open('db/{}'.format(key)) as f:
+                return f.read()
+
+        return self._bucket.get_key(key)
+
+    def list(self):
+        if self.airplane_mode:
+            return os.listdir('db')
+
+        return [k.name for k in self._bucket.list()]
+
+def mkdir_p(path):
+    """Emulates `mkdir -p` behavior."""
+    try:
+        makedirs(path)
+    except OSError as exc: # Python >2.5
+        if exc.errno == errno.EEXIST:
+            pass
+        else:
+            raise
+
+
+TRUNK = TrunkStore(name=BUCKET_NAME, airplane_mode=AIRPLANE_MODE)
+
 
 
 def epoch(dt=None):
@@ -133,13 +197,12 @@ class Record(object):
 
     def delete(self):
         ES.delete(index=self.collection.name, doc_type='record', id=self.uuid)
-        BUCKET.delete_key('{}/{}'.format(self.collection.name, self.uuid))
+        TRUNK.delete('{}/{}'.format(self.collection.name, self.uuid))
 
     def _persist(self):
         """Saves the Record to S3."""
-        key = BUCKET.new_key('{0}/{1}'.format(self.collection_name, self.uuid))
-        key.update_metadata({'Content-Type': 'application/json'})
-        key.set_contents_from_string(self.json)
+        _key = '{0}/{1}'.format(self.collection_name, self.uuid)
+        TRUNK.set(_key, self.json)
 
     def _index(self):
         """Saves the Record to Elastic Search."""
@@ -166,8 +229,8 @@ class Record(object):
         else:
             collection = uuid.split('/')[0]
 
-        key = BUCKET.get_key(uuid)
-        j = json.loads(key.read())['record']
+        key_content = TRUNK.get(uuid)
+        j = json.loads(key_content)['record']
 
         r = cls()
         r.collection_name = collection
@@ -183,7 +246,7 @@ def seed():
 
     print 'Calculating Indexes...'
     indexes = set()
-    for k in progress.bar([k for k in BUCKET.list()]):
+    for k in progress.bar([k for k in TRUNK.list()]):
         indexes.add(k.name.split('/')[0])
 
     print 'Creating Indexes...'
@@ -192,7 +255,7 @@ def seed():
         c.save()
 
     print 'Indexing...'
-    for key in progress.bar([k for k in BUCKET.list()]):
+    for key in progress.bar([k for k in TRUNK.list()]):
          r = Record._from_uuid(key.name)
          r._index()
 
