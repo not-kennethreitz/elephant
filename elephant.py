@@ -224,10 +224,8 @@ class Record(object):
 
     @classmethod
     def _from_uuid(cls, uuid, collection=None):
-        if collection:
-            uuid = '{}/{}'.format(collection, uuid)
-        else:
-            collection = uuid.split('/')[0]
+        if collection is None:
+            collection, uuid = uuid.split('/', 2)
 
         result = ES.get(collection, 'record', uuid)['_source']
 
