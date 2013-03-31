@@ -271,7 +271,7 @@ def seed():
 
     print 'Indexing...'
     for key in progress.bar([k for k in TRUNK.list()]):
-         r = Record._from_uuid_s3(key.name)
+         r = Record._from_uuid_s3(key)
          r._index()
 
 @app.before_request
