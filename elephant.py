@@ -80,7 +80,7 @@ class TrunkStore(object):
             with open('db/{}'.format(key)) as f:
                 return f.read()
 
-        return self._bucket.get_key(key)
+        return self._bucket.get_key(key).read()
 
     def list(self):
         if self.airplane_mode:
