@@ -24,10 +24,12 @@ manager = Manager(app)
 app.debug = 'DEBUG' in os.environ
 
 # The Elastic Search endpoint to use.
-ELASTICSEARCH_URL = os.environ['ELASTICSEARCH_URL']
+ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL')
+ELASTICSEARCH_URL = ELASTICSEARCH_URL or os.environ['SEARCHBOX_URL']
 CLUSTER_NAME = os.environ['CLUSTER_NAME']
 API_KEY = os.environ['API_KEY']
 AIRPLANE_MODE = 'AIRPLANE_MODE' in os.environ
+# TODO: PUBLIC_QUERIES = 'PUBLIC_QUERIES' in os.environ
 
 # If S3 bucket doesn't exist, set it up.
 BUCKET_NAME = 'elephant-{}'.format(CLUSTER_NAME)
@@ -97,10 +99,6 @@ def mkdir_p(path):
             raise
 
 
-TRUNK = TrunkStore(name=BUCKET_NAME, airplane_mode=AIRPLANE_MODE)
-
-
-
 def epoch(dt=None):
     """Returns the epoch value for the given datetime, defulting to now."""
 
@@ -109,6 +107,9 @@ def epoch(dt=None):
 
     return int(time.mktime(dt.timetuple()) * 1000 + dt.microsecond / 1000)
 
+
+
+TRUNK = TrunkStore(name=BUCKET_NAME, airplane_mode=AIRPLANE_MODE)
 
 class Collection(object):
     """A set of Records."""
@@ -157,7 +158,6 @@ class Collection(object):
         return [r for r in self.iter_search(query, **kwargs)]
 
     def save(self):
-        # return requests.post('{}/{}'.format(ELASTICSEARCH_URL, self.name), auth=ES_AUTH)
         try:
             return ES.create_index(self.name)
         except IndexAlreadyExistsError:
@@ -259,15 +259,10 @@ def seed():
          r = Record._from_uuid(key.name)
          r._index()
 
-@manager.command
-def purge():
-    """Seeds the index from the configured S3 Bucket."""
-    print 'Deleting all indexes...'
-    ES.delete_all_indexes()
-
 @app.before_request
 def require_apikey():
     """Blocks aunauthorized requests."""
+    # TODO: Convert this to a decorator
 
     if app.debug:
         return

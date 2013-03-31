@@ -41,7 +41,7 @@ Optional Configuration::
     AIRPLANE_MODE = 1
 
     # Allow the public to query the dataset without authentication.
-    PUBLIC_QUERIES=1
+    PUBLIC_QUERIES = 1
 
     # Custom S3 Bucket Name
     S3_BUCKET_NAME
@@ -56,9 +56,6 @@ Management
 ----------
 
 Reseeding ElasticSearch is super simple::
-
-    $ python elephant.py purge
-    Deleting all indexes...
 
     $ python elephant.py seed
     Calculating Indexes...
