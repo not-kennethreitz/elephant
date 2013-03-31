@@ -25,7 +25,7 @@ app.debug = 'DEBUG' in os.environ
 
 # The Elastic Search endpoint to use.
 ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL')
-ELASTICSEARCH_URL = ELASTICSEARCH_URL or os.environ['SEARCHBOX_URL']
+ELASTICSEARCH_URL = os.environ.get('SEARCHBOX_URL') or ELASTICSEARCH_URL
 CLUSTER_NAME = os.environ['CLUSTER_NAME']
 API_KEY = os.environ['API_KEY']
 AIRPLANE_MODE = 'AIRPLANE_MODE' in os.environ
