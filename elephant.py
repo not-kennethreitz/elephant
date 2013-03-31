@@ -229,6 +229,23 @@ class Record(object):
         else:
             collection = uuid.split('/')[0]
 
+        result = ES.get(collection, 'record', uuid)['_source']
+
+        r = cls()
+        r.collection_name = collection
+        r.uuid = result.pop('uuid', None)
+        r.epoch = result.pop('epoch', None)
+        r.data = result
+
+        return r
+
+    @classmethod
+    def _from_uuid_s3(cls, uuid, collection=None):
+        if collection:
+            uuid = '{}/{}'.format(collection, uuid)
+        else:
+            collection = uuid.split('/')[0]
+
         key_content = TRUNK.get(uuid)
         j = json.loads(key_content)['record']
 
@@ -256,7 +273,7 @@ def seed():
 
     print 'Indexing...'
     for key in progress.bar([k for k in TRUNK.list()]):
-         r = Record._from_uuid(key.name)
+         r = Record._from_uuid_s3(key.name)
          r._index()
 
 @app.before_request
