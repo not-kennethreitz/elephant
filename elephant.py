@@ -247,7 +247,7 @@ def seed():
     print 'Calculating Indexes...'
     indexes = set()
     for k in progress.bar([k for k in TRUNK.list()]):
-        indexes.add(k.name.split('/')[0])
+        indexes.add(k.split('/')[0])
 
     print 'Creating Indexes...'
     for index in indexes:
