@@ -50,7 +50,11 @@ class TrunkStore(object):
         if self.airplane_mode:
             mkdir_p('db')
         else:
-            self._bucket = boto.connect_s3().create_bucket(self.bucket_name)
+            conn = boto.connect_s3()
+            if self.bucket_name not in conn:
+                self._bucket = boto.connect_s3().create_bucket(self.bucket_name)
+
+            boto.connect_s3().get_bucket(self.bucket_name)
 
     def delete(self, key):
         if self.airplane_mode:
