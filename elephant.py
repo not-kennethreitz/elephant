@@ -14,7 +14,7 @@ from flask import Flask, request, Response, jsonify, redirect
 from flask.ext.script import Manager
 from clint.textui import progress
 from pyelasticsearch import ElasticSearch
-from pyelasticsearch.exceptions import IndexAlreadyExistsError
+from pyelasticsearch.exceptions import IndexAlreadyExistsError, InvalidJsonResponseError
 
 
 app = Flask(__name__)
@@ -160,7 +160,7 @@ class Collection(object):
     def save(self):
         try:
             return ES.create_index(self.name)
-        except IndexAlreadyExistsError:
+        except (IndexAlreadyExistsError, InvalidJsonResponseError):
             pass
 
     def new_record(self):
