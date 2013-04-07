@@ -1,1 +1,1 @@
-web: gunicorn elephant:app -w 3
+web: gunicorn elephant:app -w 6

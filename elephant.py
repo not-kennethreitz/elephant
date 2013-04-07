@@ -34,8 +34,6 @@ PUBLIC_ALLOWED = 'PUBLIC_ALLOWED' in os.environ
 # If S3 bucket doesn't exist, set it up.
 BUCKET_NAME = 'elephant-{}'.format(CLUSTER_NAME)
 
-
-
 # Elastic Search Stuff.
 ES = ElasticSearch(ELASTICSEARCH_URL)
 _url = urlparse.urlparse(ES.servers.live[0])
