@@ -10,7 +10,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import boto
-from flask import Flask, request, Response, jsonify, redirect
+from flask import Flask, request, jsonify, redirect
 from flask.ext.script import Manager
 from clint.textui import progress
 from pyelasticsearch import ElasticSearch
@@ -33,6 +33,7 @@ AIRPLANE_MODE = 'AIRPLANE_MODE' in os.environ
 
 # If S3 bucket doesn't exist, set it up.
 BUCKET_NAME = 'elephant-{}'.format(CLUSTER_NAME)
+
 
 
 # Elastic Search Stuff.
@@ -169,9 +170,9 @@ class Collection(object):
 
     def new_record(self):
         r = Record()
-        r.collection_name = self.name
         return r
 
+COLLECTION = Collection(CLUSTER_NAME)
 
 
 class Record(object):
@@ -181,11 +182,9 @@ class Record(object):
         self.uuid = str(uuid4())
         self.data = {}
         self.epoch = epoch()
-        self.collection_name = None
 
     def __repr__(self):
-        return "<Record:{0}:{1} {2}>".format(
-                self.collection_name, self.uuid, repr(self.data))
+        return "<Record:{1} {2}>".format(self.uuid, repr(self.data))
 
     def __getitem__(self, *args, **kwargs):
         return self.data.__getitem__(*args, **kwargs)
@@ -200,8 +199,8 @@ class Record(object):
         self._index()
 
     def delete(self):
-        ES.delete(index=self.collection.name, doc_type='record', id=self.uuid)
-        TRUNK.delete('{}/{}'.format(self.collection.name, self.uuid))
+        ES.delete(index=CLUSTER_NAME, doc_type='record', id=self.uuid)
+        TRUNK.delete(self.uuid)
 
     def _persist(self):
         """Saves the Record to S3."""
@@ -210,7 +209,7 @@ class Record(object):
 
     def _index(self):
         """Saves the Record to Elastic Search."""
-        return ES.index(self.collection.name, 'record', self.dict, id=self.uuid)
+        return ES.index(CLUSTER_NAME, 'record', self.dict, id=self.uuid)
 
     @property
     def dict(self):
@@ -224,17 +223,13 @@ class Record(object):
 
     @property
     def collection(self):
-        return Collection(name=self.collection_name)
+        return Collection(name=CLUSTER_NAME)
 
     @classmethod
-    def _from_uuid(cls, uuid, collection=None):
-        if collection is None:
-            collection, uuid = uuid.split('/', 2)
-
-        result = ES.get(collection, 'record', uuid)['_source']
+    def _from_uuid(cls, uuid):
+        result = ES.get(CLUSTER_NAME, 'record', uuid)['_source']
 
         r = cls()
-        r.collection_name = collection
         r.uuid = result.pop('uuid', None)
         r.epoch = result.pop('epoch', None)
         r.data = result
@@ -242,17 +237,11 @@ class Record(object):
         return r
 
     @classmethod
-    def _from_uuid_s3(cls, uuid, collection=None):
-        if collection:
-            uuid = '{}/{}'.format(collection, uuid)
-        else:
-            collection = uuid.split('/')[0]
-
+    def _from_uuid_s3(cls, uuid):
         key_content = TRUNK.get(uuid)
         j = json.loads(key_content)['record']
 
         r = cls()
-        r.collection_name = collection
         r.uuid = j.pop('uuid', None)
         r.epoch = j.pop('epoch', None)
         r.data = j
@@ -263,15 +252,9 @@ class Record(object):
 def seed():
     """Seeds the index from the configured S3 Bucket."""
 
-    print 'Calculating Indexes...'
-    indexes = set()
-    for k in progress.bar([k for k in TRUNK.list()]):
-        indexes.add(k.split('/')[0])
-
-    print 'Creating Indexes...'
-    for index in indexes:
-        c = Collection(index)
-        c.save()
+    print 'Creating Index...'
+    c = Collection(CLUSTER_NAME)
+    c.save()
 
     print 'Indexing...'
     for key in progress.bar([k for k in TRUNK.list()]):
@@ -293,68 +276,53 @@ def require_apikey():
     if not (valid_key_param or valid_key_header or valid_basic_pass):
         return '>_<', 403
 
-@app.route('/login')
-def login_challenge():
-    return Response(
-    'Could not verify your access level for that URL.\n'
-    'You have to login with proper credentials', 401,
-    {'WWW-Authenticate': 'Basic realm="Login Required"'})
-
-
-@app.route('/<collection>/')
-def get_collection(collection):
+@app.route('/')
+def get_collection():
     """Get a list of records from a given collection."""
 
-    if collection == 'favicon.ico':
-        return '.'
-
-    c = Collection(collection)
-
     args = request.args.to_dict()
-    results = c.search(request.args.get('q'), **args)
+    results = COLLECTION.search(request.args.get('q'), **args)
 
     return jsonify(records=[r.dict for r in results])
 
-@app.route('/<collection>/', methods=['POST', 'PUT'])
-def post_collection(collection):
+@app.route('/', methods=['POST', 'PUT'])
+def post_collection():
     """Add a new record to a given collection."""
-    c = Collection(collection)
-    c.save()
 
-    record = c.new_record()
+    record = COLLECTION.new_record()
     record.data = request.json or request.form.to_dict()
     record.save()
 
-    return get_record(collection, record.uuid)
+    return get_record(record.uuid)
 
-@app.route('/<collection>/<uuid>')
-def get_record(collection, uuid):
+@app.route('/<uuid>')
+def get_record(uuid):
     """Get a record from a given collection."""
-    return jsonify(record=Collection(collection)[uuid].dict)
+    return jsonify(record=COLLECTION[uuid].dict)
 
-@app.route('/<collection>/<uuid>', methods=['POST'])
-def post_record(collection, uuid):
+@app.route('/<uuid>', methods=['POST'])
+def post_record(uuid):
     """Replaces a given Record."""
-    record = Collection(collection)[uuid]
+    record = COLLECTION[uuid]
     record.data = request.json or request.form.to_dict()
     record.save()
 
-    return get_record(collection, uuid)
+    return get_record(uuid)
 
-@app.route('/<collection>/<uuid>', methods=['PUT'])
-def put_record(collection, uuid):
+@app.route('/<uuid>', methods=['PUT'])
+def put_record(uuid):
     """Updates a given Record."""
 
-    record = Collection(collection)[uuid]
+    record = COLLECTION[uuid]
     record.data.update(request.json or request.form.to_dict())
     record.save()
 
-    return get_record(collection, uuid)
+    return get_record(uuid)
 
-@app.route('/<collection>/<uuid>', methods=['DELETE'])
+@app.route('/<uuid>', methods=['DELETE'])
 def delete_record(collection, uuid):
     """Deletes a given record."""
-    Collection(collection)[uuid].delete()
+    COLLECTION[uuid].delete()
     return redirect('/{}/'.format(collection))
 
 if __name__ == '__main__':
