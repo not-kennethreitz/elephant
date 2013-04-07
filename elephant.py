@@ -123,7 +123,7 @@ class Collection(object):
         self.name = name
 
     def __getitem__(self, k):
-        return Record._from_uuid(k, collection=self.name)
+        return Record._from_uuid(k)
 
     def iter_search(self, query, **kwargs):
         """Returns an iterator of Records for the given query."""
@@ -150,7 +150,7 @@ class Collection(object):
 
         params['es_q'] = query
         for hit in results['hits']['hits']:
-            yield Record._from_uuid(hit['_id'], collection=self.name)
+            yield Record._from_uuid(hit['_id'])
 
     def search(self, query, sort=None, size=None, **kwargs):
         """Returns a list of Records for the given query."""
@@ -204,8 +204,7 @@ class Record(object):
 
     def _persist(self):
         """Saves the Record to S3."""
-        _key = '{0}/{1}'.format(self.collection_name, self.uuid)
-        TRUNK.set(_key, self.json)
+        TRUNK.set(self.uuid, self.json)
 
     def _index(self):
         """Saves the Record to Elastic Search."""
