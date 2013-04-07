@@ -41,13 +41,13 @@ Optional Configuration::
     AIRPLANE_MODE = 1
 
     # Allow the public to query the dataset without authentication.
-    PUBLIC_QUERIES = 1
+    PUBLIC_ALLOWED = 1
 
     # Custom S3 Bucket Name
-    S3_BUCKET_NAME
+    TODO: S3_BUCKET_NAME
 
     # Custom DynamoDB Name
-    DYNAMODB_NAME
+    TODO: DYNAMODB_NAME
 
 If you need a production Elastic Search instance, checkout `SearchBox.io <http://searchbox.io>`_ and `heroku-elasticsearch <https://github.com/kennethreitz/heroku-elasticsearch>`_.
 

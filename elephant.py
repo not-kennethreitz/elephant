@@ -10,7 +10,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import boto
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify, redirect, abort
 from flask.ext.script import Manager
 from clint.textui import progress
 from pyelasticsearch import ElasticSearch
@@ -29,7 +29,7 @@ ELASTICSEARCH_URL = os.environ.get('SEARCHBOX_URL') or ELASTICSEARCH_URL
 CLUSTER_NAME = os.environ['CLUSTER_NAME']
 API_KEY = os.environ['API_KEY']
 AIRPLANE_MODE = 'AIRPLANE_MODE' in os.environ
-# TODO: PUBLIC_QUERIES = 'PUBLIC_QUERIES' in os.environ
+PUBLIC_ALLOWED = 'PUBLIC_ALLOWED' in os.environ
 
 # If S3 bucket doesn't exist, set it up.
 BUCKET_NAME = 'elephant-{}'.format(CLUSTER_NAME)
@@ -268,16 +268,21 @@ def require_apikey():
     if app.debug:
         return
 
+def paywall(safe=False):
+    if safe and PUBLIC_ALLOWED:
+        return
+
     valid_key_param = request.args.get('key') == API_KEY
     valid_key_header = request.headers.get('X-Key') == API_KEY
     valid_basic_pass = request.authorization.password == API_KEY if request.authorization else False
-
     if not (valid_key_param or valid_key_header or valid_basic_pass):
-        return '>_<', 403
+        abort('>_<', 403)
 
 @app.route('/')
 def get_collection():
     """Get a list of records from a given collection."""
+
+    paywall(safe=True)
 
     args = request.args.to_dict()
     results = COLLECTION.search(request.args.get('q'), **args)
@@ -288,6 +293,8 @@ def get_collection():
 def post_collection():
     """Add a new record to a given collection."""
 
+    paywall(safe=False)
+
     record = COLLECTION.new_record()
     record.data = request.json or request.form.to_dict()
     record.save()
@@ -297,11 +304,17 @@ def post_collection():
 @app.route('/<uuid>')
 def get_record(uuid):
     """Get a record from a given collection."""
+
+    paywall(safe=True)
+
     return jsonify(record=COLLECTION[uuid].dict)
 
 @app.route('/<uuid>', methods=['POST'])
 def post_record(uuid):
     """Replaces a given Record."""
+
+    paywall(safe=False)
+
     record = COLLECTION[uuid]
     record.data = request.json or request.form.to_dict()
     record.save()
@@ -312,6 +325,8 @@ def post_record(uuid):
 def put_record(uuid):
     """Updates a given Record."""
 
+    paywall(safe=False)
+
     record = COLLECTION[uuid]
     record.data.update(request.json or request.form.to_dict())
     record.save()
@@ -321,6 +336,9 @@ def put_record(uuid):
 @app.route('/<uuid>', methods=['DELETE'])
 def delete_record(collection, uuid):
     """Deletes a given record."""
+
+    paywall(safe=False)
+
     COLLECTION[uuid].delete()
     return redirect('/{}/'.format(collection))
 
