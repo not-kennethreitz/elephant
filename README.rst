@@ -49,7 +49,7 @@ Optional Configuration::
     # Custom DynamoDB Name
     DYNAMODB_NAME
 
-If you need an Elastic Search to test against, checkout `heroku-elasticsearch <https://github.com/kennethreitz/heroku-elasticsearch>`_.
+If you need a production Elastic Search instance, checkout `SearchBox.io <http://searchbox.io>`_ and `heroku-elasticsearch <https://github.com/kennethreitz/heroku-elasticsearch>`_.
 
 
 Management
@@ -64,7 +64,7 @@ Reseeding ElasticSearch is super simple::
     Indexing...
     [####                            ] 29/378
 
-Inpsiration
+Inspiration
 -----------
 
 Extracted out of the in-progress `blackbox <https://github.com/kennethreitz/blackbox>`_ project.

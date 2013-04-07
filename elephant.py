@@ -104,7 +104,7 @@ def mkdir_p(path):
 
 
 def epoch(dt=None):
-    """Returns the epoch value for the given datetime, defulting to now."""
+    """Returns the epoch value for the given datetime, defaulting to now."""
 
     if not dt:
         dt = datetime.utcnow()
@@ -130,7 +130,7 @@ class Collection(object):
         if query is None:
             query = '*'
 
-        # Pepare elastic search queries.
+        # Prepare elastic search queries.
         params = {}
         for (k, v) in kwargs.items():
             params['es_{0}'.format(k)] = v
@@ -280,7 +280,7 @@ def seed():
 
 @app.before_request
 def require_apikey():
-    """Blocks aunauthorized requests."""
+    """Blocks unauthorized requests."""
     # TODO: Convert this to a decorator
 
     if app.debug:
@@ -329,7 +329,7 @@ def post_collection(collection):
 
 @app.route('/<collection>/<uuid>')
 def get_record(collection, uuid):
-    """Get a record from a given colection."""
+    """Get a record from a given collection."""
     return jsonify(record=Collection(collection)[uuid].dict)
 
 @app.route('/<collection>/<uuid>', methods=['POST'])
