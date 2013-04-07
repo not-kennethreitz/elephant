@@ -276,7 +276,7 @@ def paywall(safe=False):
     valid_key_header = request.headers.get('X-Key') == API_KEY
     valid_basic_pass = request.authorization.password == API_KEY if request.authorization else False
     if not (valid_key_param or valid_key_header or valid_basic_pass):
-        abort()
+        abort(403)
 
 @app.route('/')
 def get_collection():
