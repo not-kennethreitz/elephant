@@ -263,15 +263,9 @@ class Record(object):
 def seed():
     """Seeds the index from the configured S3 Bucket."""
 
-    print 'Calculating Indexes...'
-    indexes = set()
-    for k in progress.bar([k for k in TRUNK.list()]):
-        indexes.add(k.split('/')[0])
-
-    print 'Creating Indexes...'
-    for index in indexes:
-        c = Collection(index)
-        c.save()
+    print 'Creating Index...'
+    c = Collection(CLUSTER_NAME)
+    c.save()
 
     print 'Indexing...'
     for key in progress.bar([k for k in TRUNK.list()]):
@@ -301,61 +295,63 @@ def login_challenge():
     {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
 
-@app.route('/<collection>/')
-def get_collection(collection):
+@app.route('/')
+def get_collection():
     """Get a list of records from a given collection."""
 
-    if collection == 'favicon.ico':
-        return '.'
-
-    c = Collection(collection)
+    c = Collection(CLUSTER_NAME)
 
     args = request.args.to_dict()
     results = c.search(request.args.get('q'), **args)
 
     return jsonify(records=[r.dict for r in results])
 
-@app.route('/<collection>/', methods=['POST', 'PUT'])
-def post_collection(collection):
-    """Add a new record to a given collection."""
-    c = Collection(collection)
+@app.route('/', methods=['POST', 'PUT'])
+def post_collection():
+    """Add a new record to the trunk."""
+    c = Collection(CLUSTER_NAME)
     c.save()
 
     record = c.new_record()
     record.data = request.json or request.form.to_dict()
     record.save()
 
-    return get_record(collection, record.uuid)
+    return get_record(CLUSTER_NAME, record.uuid)
 
-@app.route('/<collection>/<uuid>')
-def get_record(collection, uuid):
-    """Get a record from a given colection."""
-    return jsonify(record=Collection(collection)[uuid].dict)
+@app.route('/<uuid>')
+def get_record(uuid):
+    """Get a record from the trunk."""
 
-@app.route('/<collection>/<uuid>', methods=['POST'])
-def post_record(collection, uuid):
+    # Don't let the browsers win.
+    if uuid == 'favicon.ico':
+        return '.'
+
+    return jsonify(record=Collection(CLUSTER_NAME)[uuid].dict)
+
+@app.route('/<uuid>', methods=['POST'])
+def post_record(uuid):
     """Replaces a given Record."""
-    record = Collection(collection)[uuid]
+    record = Collection(CLUSTER_NAME)[uuid]
     record.data = request.json or request.form.to_dict()
     record.save()
 
-    return get_record(collection, uuid)
+    return get_record(CLUSTER_NAME, uuid)
 
-@app.route('/<collection>/<uuid>', methods=['PUT'])
-def put_record(collection, uuid):
+@app.route('/<uuid>', methods=['PUT'])
+def put_record(uuid):
     """Updates a given Record."""
 
-    record = Collection(collection)[uuid]
+    record = Collection(CLUSTER_NAME)[uuid]
     record.data.update(request.json or request.form.to_dict())
     record.save()
 
-    return get_record(collection, uuid)
+    return get_record(CLUSTER_NAME, uuid)
 
-@app.route('/<collection>/<uuid>', methods=['DELETE'])
-def delete_record(collection, uuid):
+@app.route('/<uuid>', methods=['DELETE'])
+def delete_record(uuid):
     """Deletes a given record."""
-    Collection(collection)[uuid].delete()
-    return redirect('/{}/'.format(collection))
+    Collection(CLUSTER_NAME)[uuid].delete()
+    return redirect('/{}/'.format(CLUSTER_NAME))
 
 if __name__ == '__main__':
     manager.run()
