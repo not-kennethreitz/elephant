@@ -10,10 +10,10 @@ Usage
 
 .. code-block:: pycon
 
-    >>> requests.post('http://elephant-server/pages/', data={'title': 'Test Page', 'draft': True})
+    >>> requests.post('http://elephant-server/', data={'title': 'Test Page', 'draft': True})
     <Response [200]>
 
-    >>> requests.get('http://elephant-server/pages/', params={'q': 'draft:True'}).json()
+    >>> requests.get('http://elephant-server/', params={'q': 'draft:True'}).json()
     {u'records': [{u'epoch': 1364286524987, u'title': u'Test Post', u'uuid': u'ce251e8a-ab6b-4f7e-bdc4-eecf0e71ac16'}}
 
 
@@ -58,9 +58,7 @@ Management
 Reseeding ElasticSearch is super simple::
 
     $ python elephant.py seed
-    Calculating Indexes...
-    [################################] 378/378
-    Creating Indexes...
+    Creating Index...
     Indexing...
     [####                            ] 29/378
 
