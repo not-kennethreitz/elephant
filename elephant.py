@@ -20,7 +20,6 @@ from pyelasticsearch.exceptions import IndexAlreadyExistsError, InvalidJsonRespo
 app = Flask(__name__)
 manager = Manager(app)
 
-# Configuration
 app.debug = 'DEBUG' in os.environ
 
 # The Elastic Search endpoint to use.
