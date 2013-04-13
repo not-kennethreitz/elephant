@@ -332,13 +332,13 @@ def put_record(uuid):
     return get_record(uuid)
 
 @app.route('/<uuid>', methods=['DELETE'])
-def delete_record(collection, uuid):
+def delete_record(uuid):
     """Deletes a given record."""
 
     paywall(safe=False)
 
     COLLECTION[uuid].delete()
-    return redirect('/{}/'.format(collection))
+    return redirect('/')
 
 if __name__ == '__main__':
     manager.run()
