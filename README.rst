@@ -49,7 +49,7 @@ Optional Configuration::
     # Custom DynamoDB Name
     TODO: DYNAMODB_NAME
 
-If you need a production Elastic Search instance, checkout `SearchBox.io <http://searchbox.io>`_ and `heroku-elasticsearch <https://github.com/kennethreitz/heroku-elasticsearch>`_.
+If you need a production Elastic Search instance, checkout `searchly <http://www.searchly.com/>`_ and `heroku-elasticsearch <https://github.com/kennethreitz/heroku-elasticsearch>`_.
 
 
 Management
