@@ -26,7 +26,7 @@ app.debug = 'DEBUG' in os.environ
 ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL')
 ELASTICSEARCH_URL = os.environ.get('SEARCHBOX_URL') or ELASTICSEARCH_URL
 CLUSTER_NAME = os.environ['CLUSTER_NAME']
-API_KEY = os.environ['API_KEY']
+API_KEY = os.getenv('API_KEY', None)
 AIRPLANE_MODE = 'AIRPLANE_MODE' in os.environ
 PUBLIC_ALLOWED = 'PUBLIC_ALLOWED' in os.environ
 
