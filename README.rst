@@ -20,6 +20,7 @@ Usage
 Configuration
 -------------
 
+
 Elephant expects the following environment variables to be set::
 
     # AWS Credentials
