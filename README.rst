@@ -14,7 +14,7 @@ Usage
     <Response [200]>
 
     >>> requests.get('http://elephant-server/', params={'q': 'draft:True'}).json()
-    {u'records': [{u'epoch': 1364286524987, u'title': u'Test Post', u'uuid': u'ce251e8a-ab6b-4f7e-bdc4-eecf0e71ac16'}}
+    {u'records': [{u'epoch': 1364286524987, u'title': u'Test Page', u'uuid': u'ce251e8a-ab6b-4f7e-bdc4-eecf0e71ac16'}}
 
 
 Configuration
