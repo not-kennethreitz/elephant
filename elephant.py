@@ -185,6 +185,11 @@ def get_collection():
     """Get a list of records from a given collection."""
 
     args = request.args.to_dict()
+
+    # Convert size to int, for Python.
+    if 'size' in args:
+        args['size'] = int(args['size'])
+
     results = collection.search(request.args.get('q', '*'), **args)
 
     return jsonify(records=[r.dict for r in results])
