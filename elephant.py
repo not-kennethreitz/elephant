@@ -1,187 +1,112 @@
-# -*- coding: utf-8 -*-
-
-import os
-import errno
 import json
-import time
-import urlparse
-from os import makedirs
-from datetime import datetime
+import os
 from uuid import uuid4
 
-import boto
-from flask import Flask, request, jsonify, redirect, abort
-from flask.ext.script import Manager
-from clint.textui import progress
-from pyelasticsearch import ElasticSearch
-from pyelasticsearch.exceptions import IndexAlreadyExistsError, InvalidJsonResponseError
+import maya
+import boto3
+import botocore
+from flask import Flask, request, jsonify
+
+from elasticsearch import Elasticsearch
+from elasticsearch_dsl import Search, Q
 
 
-app = Flask(__name__)
-manager = Manager(app)
+# Set environment variables.
+BUCKET_NAME = os.environ['BYODEMO_BUCKET_NAME']
+ES_URL = os.environ['FOUNDELASTICSEARCH_URL']
+ES_PASSWORD = os.environ['ES_PASSWORD']
+CLUSTER_NAME = 'elephant'
 
-app.debug = 'DEBUG' in os.environ
+# Set environment variables that boto expects.
+os.environ['AWS_ACCESS_KEY_ID'] = os.environ['BYODEMO_AWS_ACCESS_KEY_ID']
+os.environ['AWS_SECRET_ACCESS_KEY'] = os.environ['BYODEMO_AWS_SECRET_ACCESS_KEY']
 
-# The Elastic Search endpoint to use.
-ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL')
-ELASTICSEARCH_URL = os.environ.get('SEARCHBOX_URL') or ELASTICSEARCH_URL
-CLUSTER_NAME = os.environ['CLUSTER_NAME']
-API_KEY = os.environ['API_KEY']
-AIRPLANE_MODE = 'AIRPLANE_MODE' in os.environ
-PUBLIC_ALLOWED = 'PUBLIC_ALLOWED' in os.environ
+# Amazon S3.
+s3 = boto3.resource('s3')
+bucket = s3.Bucket(BUCKET_NAME)
+bucket_exists = True
 
-# If S3 bucket doesn't exist, set it up.
-BUCKET_NAME = 'elephant-{}'.format(CLUSTER_NAME)
+# Elastic search.
+es = Elasticsearch([ES_URL], http_auth=('elastic', ES_PASSWORD))
 
-# Elastic Search Stuff.
-ES = ElasticSearch(ELASTICSEARCH_URL)
-_url = urlparse.urlparse(ES.servers.live[0])
-ES_AUTH = (_url.username, _url.password)
+# Ensure that bucket exists.
+try:
+    s3.meta.client.head_bucket(Bucket='mybucket')
+except botocore.exceptions.ClientError as e:
+    error_code = int(e.response['Error']['Code'])
+    if error_code == 404:
+        bucket_exists = False
+assert bucket_exists
 
+# Database stuff.
 class TrunkStore(object):
-    """An abstracted S3 Bucket. Allows for airplane mode :)"""
-
-    def __init__(self, name, airplane_mode=False):
-        self.bucket_name = name
-        self.airplane_mode = airplane_mode
-
-        if self.airplane_mode:
-            mkdir_p('db')
-        else:
-            conn = boto.connect_s3()
-            if self.bucket_name not in conn:
-                self._bucket = boto.connect_s3().create_bucket(self.bucket_name)
-            else:
-                self._bucket = boto.connect_s3().get_bucket(self.bucket_name)
-
-    def delete(self, key):
-        if self.airplane_mode:
-            os.remove('db/{}'.format(key))
-            return
-
-        return self._bucket.delete_key(key)
-
-    def set(self, key, value):
-        if self.airplane_mode:
-            split = key.split('/')
-            if len(split) > 1:
-                mkdir_p('db/{}'.format(split[0]))
-
-            with open('db/{}'.format(key), 'w') as f:
-                f.write(value)
-                return
-
-        key = self._bucket.new_key(key)
-        key.update_metadata({'Content-Type': 'application/json'})
-        key.set_contents_from_string(value)
-
-        return True
+    def __init__(self, bucket):
+        self.bucket = bucket
 
     def get(self, key):
-        if self.airplane_mode:
-            with open('db/{}'.format(key)) as f:
-                return f.read()
+        """Gets an object from S3."""
+        return s3.Object(self.bucket.name, key).get()['Body'].read()
 
-        return self._bucket.get_key(key).read()
+    def set(self, key, value):
+        """Sets an object on S3."""
+        return s3.Object(self.bucket.name, key).put(Body=value)
+
+    def delete(self, key):
+        """Removes an object from S3."""
+        return s3.Object(self.bucket.name, key).delete()
 
     def list(self):
-        if self.airplane_mode:
-            return os.listdir('db')
+        return [key.key for key in self.bucket.objects.all()]
 
-        return [k.name for k in self._bucket.list()]
+trunk = TrunkStore(bucket=bucket)
 
-def mkdir_p(path):
-    """Emulates `mkdir -p` behavior."""
-    try:
-        makedirs(path)
-    except OSError as exc: # Python >2.5
-        if exc.errno == errno.EEXIST:
-            pass
-        else:
-            raise
-
-
-def epoch(dt=None):
-    """Returns the epoch value for the given datetime, defaulting to now."""
-
-    if not dt:
-        dt = datetime.utcnow()
-
-    return int(time.mktime(dt.timetuple()) * 1000 + dt.microsecond / 1000)
-
-
-
-TRUNK = TrunkStore(name=BUCKET_NAME, airplane_mode=AIRPLANE_MODE)
 
 class Collection(object):
-    """A set of Records."""
-
-    def __init__(self, name):
-        self.name = name
+    """A set of Record.s"""
+    def __init__(self):
+        pass
 
     def __getitem__(self, k):
         return Record._from_uuid(k)
 
-    def iter_search(self, query, **kwargs):
-        """Returns an iterator of Records for the given query."""
+    def iter_search(self, query, size=100, **kwargs):
 
-        if query is None:
-            query = '*'
+        index = CLUSTER_NAME
 
-        # Prepare elastic search queries.
-        params = {}
-        for (k, v) in kwargs.items():
-            params['es_{0}'.format(k)] = v
+        results = Search(using=es, index=CLUSTER_NAME).query('query_string', query=query).sort('-epoch')[:size].execute()
+        # print results
 
-        params['es_q'] = query
+        for hit in results:
+            yield Record._from_uuid(hit['uuid'])
 
-        q = {
-            'sort': [
-                {"epoch" : {"order" : "desc"}},
-            ]
-        }
+    def search(self, query, size=10, **kwargs):
 
-        q['query'] = {'term': {'query': query}},
-
-        results = ES.search(q, index=self.name, **params)
-
-        params['es_q'] = query
-        for hit in results['hits']['hits']:
-            yield Record._from_uuid(hit['_id'])
-
-    def search(self, query, sort=None, size=None, **kwargs):
-        """Returns a list of Records for the given query."""
-
-        if sort is not None:
-            kwargs['sort'] = sort
-        if size is not None:
-            kwargs['size'] = size
-
-        return [r for r in self.iter_search(query, **kwargs)]
-
-    def save(self):
-        try:
-            return ES.create_index(self.name)
-        except (IndexAlreadyExistsError, InvalidJsonResponseError):
-            pass
+        return [r for r in self.iter_search(query, size=size, **kwargs)]
 
     def new_record(self):
         r = Record()
         return r
 
-COLLECTION = Collection(CLUSTER_NAME)
+    def purge(self):
+        for record in self.iter_search('*', size=9999):
+            record.purge()
 
+    def seed(self):
+        for key in trunk.list():
+            r = Record._from_uuid_s3(key)
+            r.save()
+
+collection = Collection()
 
 class Record(object):
-    """A record in the database."""
-
+    """A record in the collection."""
     def __init__(self):
         self.uuid = str(uuid4())
         self.data = {}
-        self.epoch = epoch()
+        self.epoch = maya.now().epoch
 
     def __repr__(self):
-        return "<Record:{1} {2}>".format(self.uuid, repr(self.data))
+        return "<Record:{0} {1}>".format(self.uuid, repr(self.data))
 
     def __getitem__(self, *args, **kwargs):
         return self.data.__getitem__(*args, **kwargs)
@@ -190,22 +115,25 @@ class Record(object):
         return self.data.__setitem__(*args, **kwargs)
 
     def save(self):
-        self.epoch = epoch()
+        self.epoch = maya.now().epoch
 
         self._persist()
         self._index()
 
     def delete(self):
-        ES.delete(index=CLUSTER_NAME, doc_type='record', id=self.uuid)
-        TRUNK.delete(self.uuid)
+        es.delete(index=CLUSTER_NAME, doc_type='record', id=self.uuid)
+        trunk.delete(self.uuid)
+
+    def purge(self):
+        es.delete(index=CLUSTER_NAME, doc_type='record', id=self.uuid)
 
     def _persist(self):
         """Saves the Record to S3."""
-        TRUNK.set(self.uuid, self.json)
+        trunk.set(self.uuid, self.json)
 
     def _index(self):
         """Saves the Record to Elastic Search."""
-        return ES.index(CLUSTER_NAME, 'record', self.dict, id=self.uuid)
+        return es.index(CLUSTER_NAME, 'record', self.dict, id=self.uuid)
 
     @property
     def dict(self):
@@ -219,11 +147,12 @@ class Record(object):
 
     @property
     def collection(self):
-        return Collection(name=CLUSTER_NAME)
+        return Collection()
 
     @classmethod
     def _from_uuid(cls, uuid):
-        result = ES.get(CLUSTER_NAME, 'record', uuid)['_source']
+        result = Search(using=es, index=CLUSTER_NAME).query('match', uuid=uuid).execute()[0]
+        result = result.to_dict()
 
         r = cls()
         r.uuid = result.pop('uuid', None)
@@ -234,7 +163,7 @@ class Record(object):
 
     @classmethod
     def _from_uuid_s3(cls, uuid):
-        key_content = TRUNK.get(uuid)
+        key_content = trunk.get(uuid)
         j = json.loads(key_content)['record']
 
         r = cls()
@@ -244,45 +173,19 @@ class Record(object):
 
         return r
 
-@manager.command
-def seed():
-    """Seeds the index from the configured S3 Bucket."""
 
-    print 'Creating Index...'
-    c = Collection(CLUSTER_NAME)
-    c.save()
 
-    print 'Indexing...'
-    for key in progress.bar([k for k in TRUNK.list()]):
-         r = Record._from_uuid_s3(key)
-         r._index()
+# Flask stuff.
+app = Flask(__name__)
+app.debug = True
 
-@app.before_request
-def require_apikey():
-    """Blocks unauthorized requests."""
-    # TODO: Convert this to a decorator
-
-    if app.debug:
-        return
-
-def paywall(safe=False):
-    if safe and PUBLIC_ALLOWED:
-        return
-
-    valid_key_param = request.args.get('key') == API_KEY
-    valid_key_header = request.headers.get('X-Key') == API_KEY
-    valid_basic_pass = request.authorization.password == API_KEY if request.authorization else False
-    if not (valid_key_param or valid_key_header or valid_basic_pass):
-        abort(403)
-
+# Application routes.
 @app.route('/')
 def get_collection():
     """Get a list of records from a given collection."""
 
-    paywall(safe=True)
-
     args = request.args.to_dict()
-    results = COLLECTION.search(request.args.get('q'), **args)
+    results = collection.search(request.args.get('q', '*'), **args)
 
     return jsonify(records=[r.dict for r in results])
 
@@ -290,9 +193,7 @@ def get_collection():
 def post_collection():
     """Add a new record to a given collection."""
 
-    paywall(safe=False)
-
-    record = COLLECTION.new_record()
+    record = collection.new_record()
     record.data = request.json or request.form.to_dict()
     record.save()
 
@@ -302,29 +203,24 @@ def post_collection():
 def get_record(uuid):
     """Get a record from a given collection."""
 
-    paywall(safe=True)
-
-    return jsonify(record=COLLECTION[uuid].dict)
+    return jsonify(record=collection[uuid].dict)
 
 @app.route('/<uuid>', methods=['POST'])
 def post_record(uuid):
     """Replaces a given Record."""
 
-    paywall(safe=False)
-
-    record = COLLECTION[uuid]
+    record = collection[uuid]
     record.data = request.json or request.form.to_dict()
     record.save()
 
     return get_record(uuid)
 
+
 @app.route('/<uuid>', methods=['PUT'])
 def put_record(uuid):
     """Updates a given Record."""
 
-    paywall(safe=False)
-
-    record = COLLECTION[uuid]
+    record = collection[uuid]
     record.data.update(request.json or request.form.to_dict())
     record.save()
 
@@ -336,8 +232,8 @@ def delete_record(uuid):
 
     paywall(safe=False)
 
-    COLLECTION[uuid].delete()
+    collection[uuid].delete()
     return redirect('/')
 
 if __name__ == '__main__':
-    manager.run()
+    app.run()
