@@ -24,31 +24,13 @@ Configuration
 Elephant expects the following environment variables to be set::
 
     # AWS Credentials
-    AWS_ACCESS_KEY_ID = xxxxxx
-    AWS_SECRET_ACCESS_KEY = xxxxxx
+    BYODEMO_BUCKET_NAME = xxxxxx
+    BYODEMO_AWS_ACCESS_KEY_ID = xxxxxx
+    BYODEMO_AWS_SECRET_ACCESS_KEY = xxxxxx
 
     # Elastic Search Server
-    ELASTICSEARCH_URL = xxxxxx
-
-    # Instance Name
-    CLUSTER_NAME = xxxxxx
-
-    # Instance Password
-    API_KEY = xxxxxx
-
-Optional Configuration::
-
-    # Write to local files instead of S3
-    AIRPLANE_MODE = 1
-
-    # Allow the public to query the dataset without authentication.
-    PUBLIC_ALLOWED = 1
-
-    # Custom S3 Bucket Name
-    TODO: S3_BUCKET_NAME
-
-    # Custom DynamoDB Name
-    TODO: DYNAMODB_NAME
+    FOUNDELASTICSEARCH_URL = xxxxxx
+    ES_PASSWORD = xxxxxx
 
 If you need a production Elastic Search instance, checkout `searchly <http://www.searchly.com/>`_ and `heroku-elasticsearch <https://github.com/kennethreitz/heroku-elasticsearch>`_.
 
