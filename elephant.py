@@ -235,8 +235,6 @@ def put_record(uuid):
 def delete_record(uuid):
     """Deletes a given record."""
 
-    paywall(safe=False)
-
     collection[uuid].delete()
     return redirect('/')
 
